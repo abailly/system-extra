@@ -16,7 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     System.Docker, System.Build, System.IO.Extra, System.Network.Extra
+  exposed-modules:     System.Docker, System.Build, System.IO.Extra, System.Network.Extra, System.ProcessControl
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.8 && <4.9
