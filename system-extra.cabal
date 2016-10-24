@@ -19,7 +19,7 @@ library
   exposed-modules:     System.Docker, System.Build, System.IO.Extra, System.Network.Extra, System.ProcessControl
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base
                      , bytestring, directory, process
   hs-source-dirs:      src
   default-language:    Haskell2010
