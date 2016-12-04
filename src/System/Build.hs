@@ -12,7 +12,7 @@ data BuildTarget = SimpleTarget String
                  | FullTarget String String
 
 asStackArg :: BuildTarget -> String
-asStackArg (SimpleTarget t)    = "exe:" ++ t
+asStackArg (SimpleTarget t)    = ":" ++ t
 asStackArg (FullTarget pref t) = pref ++ ":exe:" ++ t
 
 asBinaryName :: BuildTarget -> String
