@@ -1,5 +1,6 @@
 -- | Provide high-level functions to build Haskell-project using some docker image
-module System.Build(BuildTarget(..), stackInDocker) where
+module System.Build(BuildTarget(..), asBinaryName, asStackArg
+                   , stackInDocker) where
 
 import           Data.Functor
 import           System.Directory
@@ -10,6 +11,7 @@ import           System.Process
 
 data BuildTarget = SimpleTarget String
                  | FullTarget String String
+  deriving (Eq, Show, Read)
 
 asStackArg :: BuildTarget -> String
 asStackArg (SimpleTarget t)    = ":" ++ t
