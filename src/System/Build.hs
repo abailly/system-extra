@@ -3,6 +3,7 @@ module System.Build(BuildTarget(..), asBinaryName, asStackArg
                    , stackInDocker) where
 
 import           Data.Functor
+import           Data.String
 import           System.Directory
 import           System.Docker
 import           System.IO
@@ -12,6 +13,9 @@ import           System.Process
 data BuildTarget = SimpleTarget String
                  | FullTarget String String
   deriving (Eq, Show, Read)
+
+instance IsString BuildTarget where
+  fromString = SimpleTarget
 
 asStackArg :: BuildTarget -> String
 asStackArg (SimpleTarget t)    = ":" ++ t
