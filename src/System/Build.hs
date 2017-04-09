@@ -55,8 +55,11 @@ stackInDocker img@(ImageName imgName) srcDir buildTarget = do
 exportBinary :: ImageName -> String -> IO FilePath
 exportBinary (ImageName imgName) targetName = do
   cid <- readFile ".cidfile"
-  stackRoot <- filter (/= '\n') <$> readProcess "docker" [ "run", "--rm", "--volumes-from=" ++ cid,  "-w", "/build", imgName, "stack", "path",  "--allow-different-user", "--local-install-root" ] ""
-  (_, Just hout, _, phdl) <- createProcess $ (proc "docker" ["run", "--rm", "--volumes-from=" ++ cid, "busybox","dd", "if=" ++ stackRoot ++ "/bin/" ++ targetName ]) { std_out = CreatePipe }
+  let reuseVolumes = if not (null cid)
+                     then "--volumes-from=" ++ cid
+                     else ""
+  stackRoot <- filter (/= '\n') <$> readProcess "docker" [ "run", "--rm",reuseVolumes ,  "-w", "/build", imgName, "stack", "path",  "--allow-different-user", "--local-install-root" ] ""
+  (_, Just hout, _, phdl) <- createProcess $ (proc "docker" ["run", "--rm", reuseVolumes, "busybox","dd", "if=" ++ stackRoot ++ "/bin/" ++ targetName ]) { std_out = CreatePipe }
   withBinaryFile targetName WriteMode $ \ hDst -> copy hout hDst
   void $ waitForProcess phdl
   return targetName
