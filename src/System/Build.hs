@@ -1,5 +1,5 @@
 -- | Provide high-level functions to build Haskell-project using some docker image
-module System.Build(BuildTarget(..), asBinaryName, asStackArg
+module System.Build(BuildArgs(..), asBinaryName, asStackArg
                    , stackInDocker) where
 
 import           Data.Functor
@@ -10,20 +10,39 @@ import           System.IO
 import           System.IO.Extra
 import           System.Process
 
-data BuildTarget = SimpleTarget String
-                 | FullTarget String String
+-- | Arguments passed to `stack` when building desired target
+data BuildArgs = SimpleTarget String
+               -- ^A simply named target for stack, assumes component is unique in all current packages. See <Stack https://docs.haskellstack.org/en/stable/build_command/#target-syntax>.
+               | FullTarget String String
+               -- ^A fully named target for stack to build. Assumes component is an executable type.
+               | GHCOption String
+               -- ^Pass arguments to GHC
+               | MoreArgs BuildArgs BuildArgs
+               -- ^Compose arguments
+               | NoArgs
+               -- ^Neutral element for `BuildArgs`
   deriving (Eq, Show, Read)
 
-instance IsString BuildTarget where
+instance Monoid BuildArgs where
+  mempty  = NoArgs
+  mappend = MoreArgs
+
+instance IsString BuildArgs where
   fromString = SimpleTarget
 
-asStackArg :: BuildTarget -> String
-asStackArg (SimpleTarget t)    = ":" ++ t
-asStackArg (FullTarget pref t) = pref ++ ":exe:" ++ t
+asStackArg :: BuildArgs -> [String]
+asStackArg NoArgs              = []
+asStackArg (SimpleTarget t)    = [":" ++ t]
+asStackArg (FullTarget pref t) = [pref ++ ":exe:" ++ t]
+asStackArg (GHCOption opt)     = ["--ghc-options", opt]
+asStackArg (MoreArgs l r)      = asStackArg l ++ asStackArg r
 
-asBinaryName :: BuildTarget -> String
-asBinaryName (SimpleTarget t)    = t
-asBinaryName (FullTarget pref t) = t
+asBinaryName :: BuildArgs -> String
+asBinaryName NoArgs           = ""
+asBinaryName (SimpleTarget t) = t
+asBinaryName (FullTarget _ t) = t
+asBinaryName (GHCOption _)    = ""
+asBinaryName (MoreArgs l r)   = asBinaryName l ++ asBinaryName r
 
 
 -- | Build a Haskell project using some docker image.
@@ -33,10 +52,10 @@ asBinaryName (FullTarget pref t) = t
 -- the previous run which means built dependencies will normally be available.
 --
 -- The built target, which is assumed to be a binary executable, is then extracted from the container and copied
--- locally in a file called `targetName`.
+-- locally in a file named after `asBinaryName`.
 --
 -- TODO: run with current user in the container or reuse stack's docker capabilities
-stackInDocker :: ImageName -> FilePath -> BuildTarget -> IO FilePath
+stackInDocker :: ImageName -> FilePath -> BuildArgs -> IO FilePath
 stackInDocker img@(ImageName imgName) srcDir buildTarget = do
   absSrcDir <- canonicalizePath srcDir
   buildAlreadyRun <- doesFileExist ".cidfile"
@@ -44,10 +63,10 @@ stackInDocker img@(ImageName imgName) srcDir buildTarget = do
     then do
     cid <- readFile ".cidfile"
     removeFile ".cidfile"
-    callProcess "docker" ["run", "--cidfile=.cidfile", "-v", absSrcDir ++ ":/build", "--volumes-from=" ++ cid,
-                          "-v", "/root/.stack", "-w", "/build" , imgName, "stack", "build","--allow-different-user", asStackArg buildTarget ]
-    else callProcess "docker" ["run", "--cidfile=.cidfile", "-v", absSrcDir ++ ":/build",
-                               "-v", "/root/.stack", "-w", "/build" , imgName, "stack", "build","--allow-different-user", asStackArg buildTarget ]
+    callProcess "docker" $ ["run", "--cidfile=.cidfile", "-v", absSrcDir ++ ":/build", "--volumes-from=" ++ cid,
+                          "-v", "/root/.stack", "-w", "/build" , imgName, "stack", "build","--allow-different-user" ] ++  asStackArg buildTarget
+    else callProcess "docker" $ ["run", "--cidfile=.cidfile", "-v", absSrcDir ++ ":/build",
+                               "-v", "/root/.stack", "-w", "/build" , imgName, "stack", "build","--allow-different-user" ] ++  asStackArg buildTarget
 
   exportBinary img (asBinaryName buildTarget)
 
