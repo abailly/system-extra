@@ -2,14 +2,11 @@
 module System.ProcessControl where
 
 import           Control.Concurrent
-import           Control.Concurrent.Chan
 import           Control.Exception
 import           Control.Monad
 import           Data.Either
 import           Data.List
 import           Data.Monoid
-import           System.Console.GetOpt
-import           System.Environment
 import           System.IO
 import           System.Process          as P
 
@@ -46,6 +43,7 @@ trackProcess chan t@TrackedProcess{..} = do
      putStrLn $ "\x1b[31mstarted " ++ name ++ " (" ++ execPath ++ " " ++ concat (intersperse " " args) ++ ")\x1b[0m"
      let tr = Tracker name aProc [outtid, errtid]
      return $ Right tr
+   Right _ -> error "unhandled pattern"
    Left e -> print e >> (return $ Left e)
 
    where
